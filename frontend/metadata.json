@@ -1,0 +1,7 @@
+{
+  "name": "NaMo Forbidden Archive",
+  "description": "A mystical AI-powered archive interface for exploring deep wisdom and complex reasoning using Gemini 3 Pro with Thinking Mode and high-fidelity speech synthesis.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
