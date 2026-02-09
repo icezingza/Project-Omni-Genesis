@@ -1,20 +1,56 @@
-from fastapi import FastAPI, HTTPException, Request, Background_Tasks
-from pydantic import BaseModel
+"""
+Project Omni-Genesis API Gateway
+FastAPI application with JWT authentication, input validation, and rate limiting.
+"""
+from fastapi import FastAPI, HTTPException, Request, Depends, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict
-import logging
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 from .nre_core import NRECore
+from .auth import verify_token, create_access_token, Token
+from .logger import logger
 
-# Initialize
-app = FastAPI(title="Project Omni-Genesis API")
+# --- Rate Limiter ---
+limiter = Limiter(key_func=get_remote_address)
+
+# --- App Initialization ---
+app = FastAPI(
+    title="Project Omni-Genesis API",
+    description="Unified AI Backend with Golden Ratio Intelligence",
+    version="2.0.0"
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# --- CORS ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- Core Engine ---
 nre = NRECore()
-logging.basicConfig(level=logging.INFO)
 
-# --- Models ---
+
+# --- Models with Validation ---
 class ChatRequest(BaseModel):
-    user_id: str
-    message: str
+    message: str = Field(..., min_length=1, max_length=2000, description="User message")
     voice_features: Optional[Dict] = None
     facial_features: Optional[Dict] = None
+
+    @field_validator('message')
+    @classmethod
+    def sanitize_message(cls, v: str) -> str:
+        """Strip whitespace and basic sanitization."""
+        return v.strip()
+
 
 class ChatResponse(BaseModel):
     response: str
@@ -22,26 +58,75 @@ class ChatResponse(BaseModel):
     harmonic_score: float
     user_id: str
 
+
+class LoginRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=50)
+
+    @field_validator('user_id')
+    @classmethod
+    def validate_user_id(cls, v: str) -> str:
+        """Ensure user_id is alphanumeric."""
+        clean = v.strip()
+        if not clean.replace("-", "").replace("_", "").isalnum():
+            raise ValueError('user_id must be alphanumeric (with optional - or _)')
+        return clean
+
+
 # --- Events ---
 @app.on_event("startup")
 async def startup_event():
+    logger.info("startup", extra={"message": "Project Omni-Genesis API starting"})
     await nre.startup()
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    logger.info("shutdown", extra={"message": "Project Omni-Genesis API shutting down"})
     await nre.shutdown()
+
 
 # --- Endpoints ---
 @app.get("/")
 async def root():
-    return {"status": "Project Omni-Genesis API Active", "version": "1.0.0"}
+    return {"status": "Project Omni-Genesis API Active", "version": "2.0.0"}
+
+
+@app.post("/api/auth/token", response_model=Token)
+@limiter.limit("10/minute")
+async def login_for_token(request: Request, login: LoginRequest):
+    """Generate an access token for a user."""
+    logger.info("token_request", extra={"user_id": login.user_id})
+    access_token = create_access_token(user_id=login.user_id)
+    return Token(access_token=access_token, token_type="bearer")
+
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest, background_tasks: Background_Tasks):
+@limiter.limit("30/minute")
+async def chat(
+    request: Request,
+    chat_request: ChatRequest,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(verify_token)
+):
+    """
+    Protected chat endpoint. Requires Bearer token.
+    Uses Golden Ratio (PHI) weighting for response generation.
+    """
     try:
+        logger.info("chat_request", extra={
+            "user_id": user_id,
+            "message_length": len(chat_request.message)
+        })
+
         # Process through NRE Core (which uses Fusion Brain)
-        result = await nre.process_request(request.message, request.user_id)
-        
+        result = await nre.process_request(chat_request.message, user_id)
+
+        logger.info("chat_success", extra={
+            "user_id": user_id,
+            "emotion": result.get("emotion"),
+            "harmonic_score": result.get("harmonic_score")
+        })
+
         return ChatResponse(
             response=result["reply"],
             emotion=result["emotion"],
@@ -49,8 +134,9 @@ async def chat(request: ChatRequest, background_tasks: Background_Tasks):
             user_id=result["user_id"]
         )
     except Exception as e:
-        logging.error(f"Chat error: {e}")
+        logger.error("chat_error", extra={"user_id": user_id, "error": str(e)})
         raise HTTPException(status_code=500, detail="Internal processing error")
+
 
 if __name__ == "__main__":
     import uvicorn
