@@ -1,0 +1,6 @@
+python-dotenv
+termcolor
+psutil
+sentence-transformers
+faiss-cpu
+numpy
