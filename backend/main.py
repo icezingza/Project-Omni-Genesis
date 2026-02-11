@@ -2,6 +2,9 @@
 Project Omni-Genesis API Gateway
 FastAPI application with JWT authentication, input validation, and rate limiting.
 """
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Request, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
@@ -17,26 +20,40 @@ from .logger import logger
 # --- Rate Limiter ---
 limiter = Limiter(key_func=get_remote_address)
 
+# --- Core Engine ---
+nre = NRECore()
+
+
+# --- Lifespan (replaces deprecated on_event) ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown lifecycle management."""
+    logger.info("startup", extra={"message": "Project Omni-Genesis API starting"})
+    await nre.startup()
+    yield
+    logger.info("shutdown", extra={"message": "Project Omni-Genesis API shutting down"})
+    await nre.shutdown()
+
+
 # --- App Initialization ---
 app = FastAPI(
     title="Project Omni-Genesis API",
     description="Unified AI Backend with Golden Ratio Intelligence",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # --- CORS ---
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure for production
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# --- Core Engine ---
-nre = NRECore()
 
 
 # --- Models with Validation ---
@@ -79,17 +96,6 @@ FAKE_USERS_DB = {
     "namo_dev": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
 }
 
-# --- Events ---
-@app.on_event("startup")
-async def startup_event():
-    logger.info("startup", extra={"message": "Project Omni-Genesis API starting"})
-    await nre.startup()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("shutdown", extra={"message": "Project Omni-Genesis API shutting down"})
-    await nre.shutdown()
 
 
 # --- Endpoints ---

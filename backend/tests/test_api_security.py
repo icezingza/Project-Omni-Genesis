@@ -72,20 +72,28 @@ class TestTokenEndpoint:
     """Test /api/auth/token endpoint."""
 
     def test_get_token_success(self):
-        """Verify token can be generated."""
+        """Verify token can be generated with valid credentials."""
         response = client.post(
             "/api/auth/token",
-            json={"user_id": "user123"}
+            json={"user_id": "admin", "password": "admin123"}
         )
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
         assert data["token_type"] == "bearer"
 
+    def test_wrong_password_rejected(self):
+        """Verify that wrong passwords are rejected."""
+        response = client.post(
+            "/api/auth/token",
+            json={"user_id": "admin", "password": "wrong_password"}
+        )
+        assert response.status_code == 401, "Expected 401 for wrong password"
+
     def test_invalid_user_id_rejected(self):
         """Verify that invalid user_ids are rejected."""
         response = client.post(
             "/api/auth/token",
-            json={"user_id": "user@#$%"}
+            json={"user_id": "user@#$%", "password": "any_password"}
         )
         assert response.status_code == 422, "Expected 422 for invalid user_id"

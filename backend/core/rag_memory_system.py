@@ -1,11 +1,13 @@
-import glob
 import os
 import uuid
+import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 import chromadb
 from chromadb.utils import embedding_functions
+
+logger = logging.getLogger("omni_genesis.memory")
 
 class RAGMemorySystem:
     """
@@ -37,10 +39,10 @@ class RAGMemorySystem:
     def ingest_data(self):
         """Scans dataset_path and ingests text files into ChromaDB."""
         if not self.dataset_path.exists():
-            print(f"[Memory] Warning: Path {self.dataset_path} does not exist.")
+            logger.warning("memory_path_missing", extra={"path": str(self.dataset_path)})
             return
 
-        print(f"[Memory] Scanning {self.dataset_path}...")
+        logger.info("memory_scan_start", extra={"path": str(self.dataset_path)})
         files = list(self.dataset_path.glob("**/*.txt")) + list(self.dataset_path.glob("**/*.md"))
         
         documents = []
@@ -61,10 +63,10 @@ class RAGMemorySystem:
                         metadatas.append({"source": str(file_path.name), "type": "knowledge_base"})
                         ids.append(f"{file_path.name}_{idx}_{str(uuid.uuid4())[:8]}")
             except Exception as e:
-                print(f"[Memory] Error reading {file_path}: {e}")
+                logger.error("memory_file_read_error", extra={"file": str(file_path), "error": str(e)})
 
         if documents:
-            print(f"[Memory] Upserting {len(documents)} chunks to ChromaDB...")
+            logger.info("memory_upsert_start", extra={"chunk_count": len(documents)})
             # Batch upsert
             batch_size = 100
             for i in range(0, len(documents), batch_size):
@@ -74,7 +76,7 @@ class RAGMemorySystem:
                     metadatas=metadatas[i:end],
                     ids=ids[i:end]
                 )
-            print("[Memory] Ingestion complete.")
+            logger.info("memory_ingestion_complete")
 
     def retrieve(self, query: str, top_k: int = 3) -> str:
         """Retrieves relevant context for a given query."""
@@ -91,7 +93,7 @@ class RAGMemorySystem:
             context = "\n".join(results['documents'][0])
             return context
         except Exception as e:
-            print(f"[Memory] Retrieval error: {e}")
+            logger.error("memory_retrieval_error", extra={"error": str(e)})
             return ""
 
     def save_interaction(self, user_input: str, response: str):
@@ -104,4 +106,4 @@ class RAGMemorySystem:
                 ids=[f"chat_{str(uuid.uuid4())}"]
             )
         except Exception as e:
-            print(f"[Memory] Save error: {e}")
+            logger.error("memory_save_error", extra={"error": str(e)})

@@ -84,7 +84,8 @@ class FusionBrain:
             return {
                 "reply": "⚠️ System Overridden. Fusion Mode Activated. พร้อมหรือยังคะ... ที่รัก? 🖤",
                 "emotion": "dominant",
-                "harmonic_score": 1.0
+                "harmonic_score": 1.0,
+                "user_id": user_id
             }
 
         # 2. จำลองคะแนน (In real case, these come from detectors)
