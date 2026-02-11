@@ -15,6 +15,7 @@ from slowapi.errors import RateLimitExceeded
 
 from .nre_core import NRECore
 from .auth import verify_token, create_access_token, Token, verify_password, get_password_hash
+from .services.golden_ratio_emotion import GoldenRatioEmotionAnalyzer
 from .logger import logger
 
 # --- Rate Limiter ---
@@ -22,6 +23,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 # --- Core Engine ---
 nre = NRECore()
+emotion_analyzer = GoldenRatioEmotionAnalyzer()
 
 
 # --- Lifespan (replaces deprecated on_event) ---
@@ -74,6 +76,19 @@ class ChatResponse(BaseModel):
     emotion: str
     harmonic_score: float
     user_id: str
+
+
+class EmotionAnalysisRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=2000)
+    has_history: bool = False
+
+
+class EmotionAnalysisResponse(BaseModel):
+    emotion: float
+    logic: float
+    combined: float
+    confidence: float
+    strategy: str
 
 
 class LoginRequest(BaseModel):
@@ -160,6 +175,17 @@ async def chat(
     except Exception as e:
         logger.error("chat_error", extra={"user_id": user_id, "error": str(e)})
         raise HTTPException(status_code=500, detail="Internal processing error")
+
+
+@app.post("/api/emotion/analyze", response_model=EmotionAnalysisResponse)
+@limiter.limit("60/minute")
+async def analyze_emotion(request: Request, payload: EmotionAnalysisRequest):
+    """Analyze text emotion/logic with Golden Ratio weighted scoring."""
+    analysis = emotion_analyzer.analyze(
+        payload.text,
+        context={"has_history": payload.has_history},
+    )
+    return EmotionAnalysisResponse(**analysis)
 
 
 if __name__ == "__main__":
