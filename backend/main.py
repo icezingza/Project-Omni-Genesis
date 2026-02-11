@@ -11,7 +11,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from .nre_core import NRECore
-from .auth import verify_token, create_access_token, Token
+from .auth import verify_token, create_access_token, Token, verify_password, get_password_hash
 from .logger import logger
 
 # --- Rate Limiter ---
@@ -61,6 +61,7 @@ class ChatResponse(BaseModel):
 
 class LoginRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=50)
+    password: str = Field(..., min_length=4, max_length=100)
 
     @field_validator('user_id')
     @classmethod
@@ -71,6 +72,12 @@ class LoginRequest(BaseModel):
             raise ValueError('user_id must be alphanumeric (with optional - or _)')
         return clean
 
+# --- Mock User Database (Replace with real DB in production) ---
+# Default admin password is "admin123"
+FAKE_USERS_DB = {
+    "admin": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
+    "namo_dev": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
+}
 
 # --- Events ---
 @app.on_event("startup")
@@ -96,6 +103,17 @@ async def root():
 async def login_for_token(request: Request, login: LoginRequest):
     """Generate an access token for a user."""
     logger.info("token_request", extra={"user_id": login.user_id})
+    
+    # Verify user (Mock implementation)
+    user_hash = FAKE_USERS_DB.get(login.user_id)
+    if not user_hash or not verify_password(login.password, user_hash):
+        logger.warning("login_failed", extra={"user_id": login.user_id})
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     access_token = create_access_token(user_id=login.user_id)
     return Token(access_token=access_token, token_type="bearer")
 

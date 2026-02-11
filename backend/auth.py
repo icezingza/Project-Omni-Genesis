@@ -10,12 +10,14 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from pydantic import BaseModel
+from passlib.context import CryptContext
 
 # --- Configuration ---
 SECRET_KEY = os.getenv("SECRET_KEY", "omni-genesis-dev-secret-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 
@@ -41,6 +43,14 @@ def create_access_token(user_id: str, expires_delta: Optional[timedelta] = None)
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against a hash."""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    """Generate a password hash."""
+    return pwd_context.hash(password)
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     """Verify JWT token and return user_id. Raises HTTPException if invalid."""

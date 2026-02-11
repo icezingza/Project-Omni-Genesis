@@ -1,73 +1,107 @@
 import glob
-import json
 import os
-import random
-import time
+import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Dict, Any, Optional
 
-import faiss
-import numpy as np
-# from openai import OpenAI # Uncomment in production
+import chromadb
+from chromadb.utils import embedding_functions
 
 class RAGMemorySystem:
     """
-    ระบบความจำนิรันดร์: อ่านไฟล์นิยายจริงๆ ของคุณจาก learning_set
+    RAG Memory System powered by ChromaDB.
+    Provides persistent vector storage, semantic retrieval, and interaction logging.
     """
-    def __init__(self, dataset_path: str | Path = "learning_set"):
+    def __init__(self, config: Dict[str, Any] = None):
+        config = config or {}
+        dataset_path = config.get("memory_path", "learning_set")
+        
         self.dataset_path = Path(dataset_path)
-        self.vector_db = Path("vector_db")
-        self.meta_path = self.vector_db / "meta.json"
-        self.index_path = self.vector_db / "knowledge.index"
-        self._faiss_index = None
-        self._faiss_meta: list[dict] = []
-        # self.client = OpenAI() # Initialize in production
-        self.memories = []
-        self.is_loaded = False
+        self.persist_dir = "./chroma_db"
+        
+        # Initialize ChromaDB (Persistent)
+        self.client = chromadb.PersistentClient(path=self.persist_dir)
+        
+        # Use default embedding function (all-MiniLM-L6-v2)
+        self.embedding_fn = embedding_functions.DefaultEmbeddingFunction()
+        
+        self.collection = self.client.get_or_create_collection(
+            name="namo_knowledge",
+            embedding_function=self.embedding_fn
+        )
+        
+        # Auto-ingest if empty
+        if self.collection.count() == 0:
+            self.ingest_data()
 
     def ingest_data(self):
-        """อ่านไฟล์ .txt และ .htm ทั้งหมดในโฟลเดอร์"""
+        """Scans dataset_path and ingests text files into ChromaDB."""
         if not self.dataset_path.exists():
-            print(f"[Warning]: Path {self.dataset_path} does not exist.")
-            self.memories = ["Placeholder memory 1", "Placeholder memory 2"]
+            print(f"[Memory] Warning: Path {self.dataset_path} does not exist.")
             return
 
-        print(f"[Memory System]: กำลังแสกนพื้นที่ {self.dataset_path} ...")
+        print(f"[Memory] Scanning {self.dataset_path}...")
+        files = list(self.dataset_path.glob("**/*.txt")) + list(self.dataset_path.glob("**/*.md"))
         
-        txt_files = glob.glob(str(self.dataset_path / "**" / "*.txt"), recursive=True)
-        htm_files = glob.glob(str(self.dataset_path / "**" / "*.htm"), recursive=True)
-        all_files = txt_files + htm_files
+        documents = []
+        metadatas = []
+        ids = []
 
-        if not all_files:
-            print("[Warning]: ไม่พบไฟล์นิยาย!")
-            self.memories = ["Standard personality data loaded."]
-            return
-
-        for file_path in all_files:
+        for file_path in files:
             try:
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
-                    chunks = [content[i:i+300] for i in range(0, len(content), 300)]
-                    self.memories.extend(chunks)
+                    # Simple chunking (500 chars)
+                    chunks = [content[i:i+500] for i in range(0, len(content), 500)]
+                    
+                    for idx, chunk in enumerate(chunks):
+                        if len(chunk.strip()) < 10: continue
+                        
+                        documents.append(chunk)
+                        metadatas.append({"source": str(file_path.name), "type": "knowledge_base"})
+                        ids.append(f"{file_path.name}_{idx}_{str(uuid.uuid4())[:8]}")
             except Exception as e:
-                print(f"อ่านไฟล์ {file_path} ไม่ได้: {e}")
+                print(f"[Memory] Error reading {file_path}: {e}")
 
-        self._load_vector_index()
-        self.is_loaded = True
+        if documents:
+            print(f"[Memory] Upserting {len(documents)} chunks to ChromaDB...")
+            # Batch upsert
+            batch_size = 100
+            for i in range(0, len(documents), batch_size):
+                end = min(i + batch_size, len(documents))
+                self.collection.upsert(
+                    documents=documents[i:end],
+                    metadatas=metadatas[i:end],
+                    ids=ids[i:end]
+                )
+            print("[Memory] Ingestion complete.")
 
-    def _load_vector_index(self):
-        if self.meta_path.exists() and self.index_path.exists():
-            try:
-                self._faiss_meta = json.load(open(self.meta_path, encoding="utf-8"))
-                self._faiss_index = faiss.read_index(str(self.index_path))
-            except Exception as e:
-                print(f"[Memory System]: Load error: {e}")
+    def retrieve(self, query: str, top_k: int = 3) -> str:
+        """Retrieves relevant context for a given query."""
+        try:
+            results = self.collection.query(
+                query_texts=[query],
+                n_results=top_k
+            )
+            
+            if not results['documents'] or not results['documents'][0]:
+                return ""
+                
+            # Combine retrieved documents
+            context = "\n".join(results['documents'][0])
+            return context
+        except Exception as e:
+            print(f"[Memory] Retrieval error: {e}")
+            return ""
 
-    def retrieve_context(self, user_input: str) -> str:
-        if not self.is_loaded:
-            self.ingest_data()
-        
-        # In real case, use vector search here. Fallback to random for now.
-        if self.memories:
-            return random.choice(self.memories)
-        return ""
+    def save_interaction(self, user_input: str, response: str):
+        """Saves the interaction to short-term memory (Vector DB)."""
+        try:
+            interaction_text = f"User: {user_input}\nNamo: {response}"
+            self.collection.add(
+                documents=[interaction_text],
+                metadatas=[{"type": "conversation_history", "timestamp": str(os.times())}],
+                ids=[f"chat_{str(uuid.uuid4())}"]
+            )
+        except Exception as e:
+            print(f"[Memory] Save error: {e}")
