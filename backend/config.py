@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     # --- Rate Limiting ---
     RATE_LIMIT_PER_MINUTE: int = 30
     AUTH_RATE_LIMIT_PER_MINUTE: int = 10
+    
+    # --- Dark Soul / Safety ---
+    SAFETY_FILTER_ENABLED: bool = False
+    NSFW_ALLOWED: bool = False
+    ENABLE_AROUSAL_DETECTOR: bool = False
+    API_MASTER_KEY: Optional[str] = None
 
     # --- AI / Golden Ratio ---
     PHI: float = 1.618033988749895
