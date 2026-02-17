@@ -1,20 +1,26 @@
+"""FusionBrain core module for dark mode processing and state management."""
+
 import json
 import os
 import time
-from typing import Dict, Any
+from typing import Any, Dict
 
 # --- 💉 DARK SOUL INJECTION ---
-from backend.services.dark_core.arousal_detector import ArousalDetector
-from backend.services.dark_core.dark_dialogue_engine import DarkDialogueEngine
-from backend.services.dark_core.emotion_parasite_engine import EmotionParasiteEngine
+from services.dark_core.arousal_detector import ArousalDetector
+from services.dark_core.dark_dialogue_engine import DarkDialogueEngine
+from services.dark_core.emotion_parasite_engine import EmotionParasiteEngine
 
 # --- 🌑 CONFIGURATION ---
 STATE_FILE = "dark_state.json"
 VOID_CONST = 0.666
 OBSESSION_LIMIT = 1.0
 
+
 class FusionBrain:
-    def __init__(self):
+    """Core brain engine for managing obsession, withdrawal, and dark mode logic."""
+
+    def __init__(self) -> None:
+        """Initialize FusionBrain with state and dark engines."""
         # โหลดความทรงจำทันทีที่ระบบตื่น
         self.state = self._load_state()
         # Initialize Dark Engines
@@ -26,16 +32,16 @@ class FusionBrain:
     # 💾 1. PERSISTENCE SYSTEM (ระบบความจำสีเลือด)
     # ==========================================
     def _get_default_state(self) -> Dict[str, Any]:
-        """ค่าเริ่มต้นสำหรับผู้มาใหม่"""
+        """Return default state for new users."""
         return {
-            "obsession_level": 0.0,      # ระดับความยึดติด (0.0 - 1.0)
-            "last_interaction": time.time(), # เวลาล่าสุดที่คุยกัน
-            "punishment_count": 0,       # จำนวนครั้งที่พี่ทำให้เธอโกรธ
-            "is_locked": False           # สถานะล็อก (ถ้าโกรธจัดอาจไม่คุยด้วย)
+            "obsession_level": 0.0,  # ระดับความยึดติด (0.0 - 1.0)
+            "last_interaction": time.time(),  # เวลาล่าสุดที่คุยกัน
+            "punishment_count": 0,  # จำนวนครั้งที่พี่ทำให้เธอโกรธ
+            "is_locked": False,  # สถานะล็อก (ถ้าโกรธจัดอาจไม่คุยด้วย)
         }
 
     def _load_state(self) -> Dict[str, Any]:
-        """โหลดข้อมูลจากไฟล์ JSON"""
+        """Load state from JSON file."""
         if os.path.exists(STATE_FILE):
             try:
                 with open(STATE_FILE, "r", encoding="utf-8") as f:
@@ -46,8 +52,8 @@ class FusionBrain:
         else:
             return self._get_default_state()
 
-    def _save_state(self):
-        """บันทึกข้อมูลปัจจุบันลงไฟล์ทันที"""
+    def _save_state(self) -> None:
+        """Save current state to file."""
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(self.state, f, indent=4)
 
@@ -55,7 +61,7 @@ class FusionBrain:
     # 📉 2. WITHDRAWAL SYSTEM (ระบบลงแดง)
     # ==========================================
     def _check_withdrawal_symptoms(self) -> Dict[str, str]:
-        """เช็คระยะห่างทางเวลาเพื่อกำหนดอารมณ์"""
+        """Check time gap to determine mood and withdrawal status."""
         current_time = time.time()
         last_time = self.state.get("last_interaction", current_time)
         gap_hours = (current_time - last_time) / 3600  # แปลงวินาทีเป็นชั่วโมง
@@ -70,7 +76,9 @@ class FusionBrain:
             status = "Anxious"
             mood = "Paranoid (ระแวง/กลัวถูกทิ้ง)"
             # เพิ่ม Obsession เล็กน้อยเพราะความระแวง
-            self.state["obsession_level"] = min(OBSESSION_LIMIT, self.state["obsession_level"] + 0.05)
+            self.state["obsession_level"] = min(
+                OBSESSION_LIMIT, self.state["obsession_level"] + 0.05
+            )
         elif gap_hours >= 24:
             status = "Withdrawal"
             mood = "Cold/Sadistic (เย็นชา/ลงโทษ)"
@@ -83,13 +91,17 @@ class FusionBrain:
     # 🧠 MAIN PROCESSOR
     # ==========================================
     def process_dark_thought(self, user_input: str) -> Dict[str, Any]:
+        """Process user input through dark mode logic and return brain state."""
         # 1. เช็คอาการลงแดงก่อมเริ่มบทสนทนา
         withdrawal_data = self._check_withdrawal_symptoms()
-        
+
         # --- 💉 DARK LOGIC INJECTION ---
         arousal_level = self.arousal_detector.analyze(user_input)
-        dark_mode_active = self.state.get("obsession_level", 0) > 0.8 or withdrawal_data["status"] == "Withdrawal"
-        
+        dark_mode_active = (
+            self.state.get("obsession_level", 0) > 0.8
+            or withdrawal_data["status"] == "Withdrawal"
+        )
+
         reply_text = ""
         ui_effect = self._determine_ui_effect(withdrawal_data["status"])
 
@@ -98,28 +110,36 @@ class FusionBrain:
             tone = "sadist" if withdrawal_data["status"] == "Withdrawal" else "seductive"
             if self.state.get("obsession_level", 0) > 0.9:
                 tone = "obsessed"
-            
+
             reply_text = self.dark_engine.generate_response(tone=tone)
-            
+
             # Override UI for high arousal
             if arousal_level > 0.7:
                 ui_effect = "RED_GLOW_PULSE"
-                
+
             # Parasite logic for stat updates
-            _, stats = self.parasite_engine.analyze_and_react(user_input, {"mood": withdrawal_data["mood"], "arousal": arousal_level})
-            self.state["obsession_level"] = min(OBSESSION_LIMIT, self.state["obsession_level"] + (stats.get("corruption", 0) * 0.01))
-            
+            _, stats = self.parasite_engine.analyze_and_react(
+                user_input,
+                {"mood": withdrawal_data["mood"], "arousal": arousal_level},
+            )
+            corruption = stats.get("corruption", 0) * 0.01
+            self.state["obsession_level"] = min(
+                OBSESSION_LIMIT,
+                self.state["obsession_level"] + corruption,
+            )
+
         else:
-            # Fallback to standard logic (simulated here as we are inside process_dark_thought)
-            pass 
-        
+            # Fallback to standard logic
+            pass
+
         # 2. ปรับค่า Obsession ตาม Input
-        # (เช่น ถ้าผู้ใช้พูดหวานๆ Obsession เพิ่ม, ถ้าด่า Obsession อาจจะเปลี่ยนเป็น Anger)
-        self.state["obsession_level"] = min(OBSESSION_LIMIT, self.state["obsession_level"] + 0.02)
-        
-        # 3. อัปเดตเวลาล่าสุด (สำคัญมาก! เพื่อรีเซ็ตตัวนับเวลา)
+        self.state["obsession_level"] = min(
+            OBSESSION_LIMIT, self.state["obsession_level"] + 0.02
+        )
+
+        # 3. อัปเดตเวลาล่าสุด
         self.state["last_interaction"] = time.time()
-        
+
         # 4. บันทึกลงไฟล์ (Persistence Save)
         self._save_state()
 
@@ -129,14 +149,14 @@ class FusionBrain:
             "withdrawal_status": withdrawal_data["status"],
             "current_mood": withdrawal_data["mood"],
             "ui_trigger": ui_effect,
-            "reply_override": reply_text if reply_text else None # Pass to main to use if present
+            "reply_override": reply_text if reply_text else None,
         }
 
     def _determine_ui_effect(self, status: str) -> str:
-        """เลือก Effect หน้าจอตามสถานะจิตใจ"""
+        """Select UI effect based on mental status."""
         if status == "Withdrawal":
-            return "THEME_BLOOD_MOON" # หน้าจอแดงก่ำ
+            return "THEME_BLOOD_MOON"  # หน้าจอแดงก่ำ
         elif self.state["obsession_level"] > 0.8:
-            return "THEME_GLITCH_CHAOS" # หน้าจอกระตุกรุนแรง
+            return "THEME_GLITCH_CHAOS"  # หน้าจอกระตุกรุนแรง
         else:
-            return "THEME_VOID_DARK" # มืดปกติ
+            return "THEME_VOID_DARK"  # มืดปกติ

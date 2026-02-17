@@ -1,0 +1,219 @@
+# ============================================
+# GitHub Actions CI/CD Pipeline
+# ============================================
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "18"
+
+jobs:
+  # ============================================
+  # Backend Tests & Linting
+  # ============================================
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run Linters
+        run: |
+          flake8 backend/ --max-line-length=100 --extend-ignore=E203,W503
+          black backend/ --check --line-length=100
+          isort backend/ --check-only --profile=black
+
+      - name: Type Check
+        run: mypy backend/ --ignore-missing-imports
+
+      - name: Security Scan
+        run: bandit -r backend/ -f json -o bandit-report.json || true
+
+      - name: Run Tests
+        run: pytest backend/tests/ -v --cov=backend --cov-report=xml --cov-report=html
+
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: backend
+          name: backend-coverage
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: |
+            htmlcov/
+            bandit-report.json
+
+  # ============================================
+  # Frontend Tests & Linting
+  # ============================================
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ./frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Type Check
+        run: npm run type-check
+
+      - name: Run Tests
+        run: npm run test -- --coverage
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: ./frontend/dist
+
+  # ============================================
+  # Docker Build
+  # ============================================
+  docker:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          push: false
+          tags: omni-genesis-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan Image for Vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: omni-genesis-backend:${{ github.sha }}
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+  # ============================================
+  # Integration Tests
+  # ============================================
+  integration:
+    runs-on: ubuntu-latest
+    needs: [backend]
+    if: github.event_name == 'pull_request'
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: omni_genesis_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run Integration Tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/omni_genesis_test
+          SECRET_KEY: test-secret-key
+          API_MASTER_KEY: test-master-key
+        run: pytest backend/tests/integration/ -v
+
+  # ============================================
+  # Deploy to Staging
+  # ============================================
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, docker]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+      - name: Deploy to Staging
+        run: |
+          echo "Deploying to staging environment..."
+          # Add your deployment script here
+
+  # ============================================
+  # Deploy to Production
+  # ============================================
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, docker]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Deploy to Production
+        run: |
+          echo "Deploying to production environment..."
+          # Add your deployment script here

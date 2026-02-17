@@ -1,0 +1,232 @@
+# ============================================
+# Project Omni-Genesis - Python Configuration
+# ============================================
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omni-genesis"
+version = "2.0.0"
+description = "AI Chat Interface with Occult-Tech Theme"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "icezingza", email = "icezingza@example.com"}
+]
+keywords = ["ai", "chat", "fastapi", "react", "gemini"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: FastAPI",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "fastapi>=0.104.0,<0.110.0",
+    "uvicorn[standard]>=0.24.0,<0.26.0",
+    "pydantic>=2.5.0,<2.10.0",
+    "pydantic-settings>=2.1.0,<3.0.0",
+    "sqlalchemy[asyncio]>=2.0.0,<2.1.0",
+    "aiosqlite>=0.19.0,<0.20.0",
+    "alembic>=1.12.0,<1.14.0",
+    "passlib[bcrypt]>=1.7.4,<1.8.0",
+    "python-jose[cryptography]>=3.3.0,<3.4.0",
+    "python-multipart>=0.0.6,<0.0.7",
+    "python-dotenv>=1.0.0,<1.1.0",
+    "httpx>=0.25.0,<0.27.0",
+    "python-json-logger>=2.0.7,<2.1.0",
+    "redis>=5.0.0,<6.0.0",
+    "prometheus-client>=0.19.0,<0.20.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0,<8.0.0",
+    "pytest-asyncio>=0.21.0,<0.23.0",
+    "pytest-cov>=4.1.0,<5.0.0",
+    "pytest-mock>=3.12.0,<4.0.0",
+    "black>=23.12.0,<24.0.0",
+    "isort>=5.13.0,<6.0.0",
+    "flake8>=6.1.0,<7.0.0",
+    "flake8-docstrings>=1.7.0,<2.0.0",
+    "flake8-bugbear>=23.12.0,<24.0.0",
+    "mypy>=1.7.0,<1.8.0",
+    "bandit[toml]>=1.7.6,<1.8.0",
+    "pre-commit>=3.6.0,<4.0.0",
+    "httpx>=0.25.0,<0.27.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/icezingza/Project-Omni-Genesis"
+Documentation = "https://github.com/icezingza/Project-Omni-Genesis/wiki"
+Repository = "https://github.com/icezingza/Project-Omni-Genesis"
+Issues = "https://github.com/icezingza/Project-Omni-Genesis/issues"
+
+# ============================================
+# Black Configuration
+# ============================================
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | __pycache__
+)/
+'''
+
+# ============================================
+# isort Configuration
+# ============================================
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+skip_glob = ["*/__pycache__/*", "*/.venv/*"]
+known_first_party = ["backend"]
+
+# ============================================
+# mypy Configuration
+# ============================================
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+ignore_missing_imports = true
+exclude = [
+    "__pycache__",
+    ".venv",
+    "build",
+    "dist",
+    "migrations",
+]
+
+# ============================================
+# pytest Configuration
+# ============================================
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["backend/tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=backend",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml:coverage.xml",
+    "--cov-fail-under=80",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow tests",
+    "asyncio: Async tests",
+]
+asyncio_mode = "auto"
+
+# ============================================
+# Coverage Configuration
+# ============================================
+[tool.coverage.run]
+source = ["backend"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/migrations/*",
+    "*/alembic/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "pass",
+]
+show_missing = true
+skip_covered = false
+fail_under = 80
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+# ============================================
+# Bandit Security Configuration
+# ============================================
+[tool.bandit]
+exclude_dirs = ["tests", "__pycache__", ".venv", "migrations"]
+skips = ["B101", "B601"]  # Skip assert warnings and wildcard imports
+
+# ============================================
+# Flake8 Configuration
+# ============================================
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203", "W503", "D100", "D104"]
+per-file-ignores = [
+    "__init__.py:F401",
+    "tests/*:D,S",
+]
+docstring-convention = "google"
+
+# ============================================
+# Commitizen Configuration
+# ============================================
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "2.0.0"
+tag_format = "v$version"
+version_files = [
+    "pyproject.toml:version",
+    "backend/__init__.py:__version__",
+]
+style = [
+    ["qmark", "fg:#ff9d00 bold"],
+    ["question", "bold"],
+    ["answer", "fg:#ff9d00 bold"],
+    ["pointer", "fg:#ff9d00 bold"],
+    ["highlighted", "fg:#ff9d00 bold"],
+    ["selected", "fg:#cc5454"],
+    ["separator", "fg:#cc5454"],
+    ["instruction", ""],
+    ["text", ""],
+    ["disabled", "fg:#858585 italic"]
+]

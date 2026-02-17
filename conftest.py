@@ -7,10 +7,13 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
-# Ensure project root is on sys.path
+# Ensure project root and backend are on sys.path
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.join(PROJECT_ROOT, "backend")
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
 
 from backend.main import app
 from backend.auth import create_access_token
