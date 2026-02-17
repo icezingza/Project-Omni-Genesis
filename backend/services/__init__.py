@@ -6,11 +6,11 @@ Core services for emotion detection, NLP, and personality generation.
 from .golden_ratio import GoldenRatioAnalyzer
 from .thai_nlp import ThaiNLPEngine
 from .emotion_detector import EmotionDetector
-from .namo_personality import NaMoPersonality
+from .namo_personality import NamoPersonalityEngine
 
 __all__ = [
     "GoldenRatioAnalyzer",
     "ThaiNLPEngine",
     "EmotionDetector",
-    "NaMoPersonality",
+    "NamoPersonalityEngine",
 ]
