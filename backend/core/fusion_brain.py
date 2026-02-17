@@ -3,7 +3,7 @@
 import json
 import os
 import time
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 # --- 💉 DARK SOUL INJECTION ---
 from services.dark_core.arousal_detector import ArousalDetector
@@ -45,7 +45,7 @@ class FusionBrain:
         if os.path.exists(STATE_FILE):
             try:
                 with open(STATE_FILE, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    return cast(Dict[str, Any], json.load(f))
             except Exception as e:
                 print(f"[System Error] Memory corrupted: {e}. Rebirthing...")
                 return self._get_default_state()
@@ -98,8 +98,7 @@ class FusionBrain:
         # --- 💉 DARK LOGIC INJECTION ---
         arousal_level = self.arousal_detector.analyze(user_input)
         dark_mode_active = (
-            self.state.get("obsession_level", 0) > 0.8
-            or withdrawal_data["status"] == "Withdrawal"
+            self.state.get("obsession_level", 0) > 0.8 or withdrawal_data["status"] == "Withdrawal"
         )
 
         reply_text = ""
@@ -133,9 +132,7 @@ class FusionBrain:
             pass
 
         # 2. ปรับค่า Obsession ตาม Input
-        self.state["obsession_level"] = min(
-            OBSESSION_LIMIT, self.state["obsession_level"] + 0.02
-        )
+        self.state["obsession_level"] = min(OBSESSION_LIMIT, self.state["obsession_level"] + 0.02)
 
         # 3. อัปเดตเวลาล่าสุด
         self.state["last_interaction"] = time.time()

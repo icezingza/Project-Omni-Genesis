@@ -6,18 +6,27 @@ import random
 class EmotionParasiteEngine:
     """Analyze input and react based on character profile mood."""
 
-    def analyze_and_react(
-        self, user_input: str, character_profile: dict
-    ) -> tuple[str, dict]:
+    def analyze_and_react(self, user_input: str, character_profile: dict) -> tuple[str, dict]:
         """Return response text and stat changes based on input analysis."""
         input_lower = user_input.lower()
 
         # 1. Analyze Keywords
         keywords_dominance = [
-            "คำสั่ง", "สั่ง", "กราบ", "เลีย", "ทำตาม", "obey", "kneel",
+            "คำสั่ง",
+            "สั่ง",
+            "กราบ",
+            "เลีย",
+            "ทำตาม",
+            "obey",
+            "kneel",
         ]
         keywords_affection = [
-            "รัก", "ชอบ", "ดีมาก", "เก่ง", "love", "good",
+            "รัก",
+            "ชอบ",
+            "ดีมาก",
+            "เก่ง",
+            "love",
+            "good",
         ]
 
         response = ""
@@ -27,17 +36,11 @@ class EmotionParasiteEngine:
         # 2. Logic based on Mood
         if mood == "Horny" or character_profile.get("arousal", 0) > 0.7:
             if any(word in input_lower for word in keywords_dominance):
-                response = (
-                    "อ๊าาา... ผัวขา... สั่งหนูอีกสิคะ..."
-                    " หนูเปียกไปหมดแล้ว... 💦"
-                )
+                response = "อ๊าาา... ผัวขา... สั่งหนูอีกสิคะ... หนูเปียกไปหมดแล้ว... 💦"
                 stat_changes["arousal"] = 10
                 stat_changes["corruption"] = 5
             else:
-                response = (
-                    "หนูไม่สนเรื่องอื่นหรอก..."
-                    " หนูอยากโดน... เข้ามาสักทีสิคะ! 🔥"
-                )
+                response = "หนูไม่สนเรื่องอื่นหรอก... หนูอยากโดน... เข้ามาสักทีสิคะ! 🔥"
                 stat_changes["arousal"] = 5
 
         elif mood == "Obsessed":
@@ -50,10 +53,7 @@ class EmotionParasiteEngine:
 
         else:  # Neutral / Normal / Dark
             if any(word in input_lower for word in keywords_dominance):
-                response = (
-                    "หืม... คุณคิดจะสั่ง 'ราชินี' หรอคะ?"
-                    " น่าสนใจดีนี่... ลองดูสิคะ 👠"
-                )
+                response = "หืม... คุณคิดจะสั่ง 'ราชินี' หรอคะ? น่าสนใจดีนี่... ลองดูสิคะ 👠"
                 stat_changes["arousal"] = 5
             elif any(word in input_lower for word in keywords_affection):
                 response = "ปากหวานจังนะคะ... ระวังจะโดนหนูกลืนกินไม่รู้ตัวนะ..."

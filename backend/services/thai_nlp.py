@@ -1,15 +1,14 @@
-"""
-Project Omni-Genesis: Thai NLP Engine
+"""Project Omni-Genesis Thai NLP Engine.
+
 Provides Thai language processing — tokenization, emotion detection,
 formality analysis, and text normalization.
-
 Falls back gracefully when PyThaiNLP is not installed.
 """
 
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple, cast
 
 logger = logging.getLogger("omni_genesis.thai_nlp")
 
@@ -28,28 +27,71 @@ except ImportError:
 # --- Thai Emotion Vocabulary ---
 THAI_EMOTION_KEYWORDS: Dict[str, List[str]] = {
     "joy": [
-        "ดีใจ", "สนุก", "มีความสุข", "ยินดี", "เฮ", "สุขใจ",
-        "ตื่นเต้น", "ปลื้ม", "หัวเราะ", "555", "ขอบคุณ",
+        "ดีใจ",
+        "สนุก",
+        "มีความสุข",
+        "ยินดี",
+        "เฮ",
+        "สุขใจ",
+        "ตื่นเต้น",
+        "ปลื้ม",
+        "หัวเราะ",
+        "555",
+        "ขอบคุณ",
     ],
     "sadness": [
-        "เศร้า", "เสียใจ", "ร้องไห้", "ผิดหวัง", "โศก",
-        "หดหู่", "เหงา", "คิดถึง", "ทุกข์", "ใจสลาย",
+        "เศร้า",
+        "เสียใจ",
+        "ร้องไห้",
+        "ผิดหวัง",
+        "โศก",
+        "หดหู่",
+        "เหงา",
+        "คิดถึง",
+        "ทุกข์",
+        "ใจสลาย",
     ],
     "anger": [
-        "โกรธ", "หงุดหงิด", "โมโห", "บ้า", "เกลียด",
-        "รำคาญ", "ฉุนเฉียว", "อารมณ์เสีย",
+        "โกรธ",
+        "หงุดหงิด",
+        "โมโห",
+        "บ้า",
+        "เกลียด",
+        "รำคาญ",
+        "ฉุนเฉียว",
+        "อารมณ์เสีย",
     ],
     "fear": [
-        "กลัว", "หวาดกลัว", "ตกใจ", "ระแวง", "วิตก",
-        "กังวล", "เครียด", "หวาดผวา",
+        "กลัว",
+        "หวาดกลัว",
+        "ตกใจ",
+        "ระแวง",
+        "วิตก",
+        "กังวล",
+        "เครียด",
+        "หวาดผวา",
     ],
     "love": [
-        "รัก", "คิดถึง", "ที่รัก", "หัวใจ", "กอด",
-        "จูบ", "ดูแล", "ห่วงใย", "แฟน",
+        "รัก",
+        "คิดถึง",
+        "ที่รัก",
+        "หัวใจ",
+        "กอด",
+        "จูบ",
+        "ดูแล",
+        "ห่วงใย",
+        "แฟน",
     ],
     "neutral": [
-        "สวัสดี", "ครับ", "ค่ะ", "อะไร", "ทำไม",
-        "ยังไง", "ได้", "ไม่", "ใช่",
+        "สวัสดี",
+        "ครับ",
+        "ค่ะ",
+        "อะไร",
+        "ทำไม",
+        "ยังไง",
+        "ได้",
+        "ไม่",
+        "ใช่",
     ],
 }
 
@@ -70,6 +112,7 @@ THAI_IDIOMS: Dict[str, str] = {
 @dataclass
 class EmotionResult:
     """Result of Thai emotion detection."""
+
     emotion: str
     confidence: float
     keywords_found: List[str] = field(default_factory=list)
@@ -78,18 +121,20 @@ class EmotionResult:
 @dataclass
 class FormalityResult:
     """Result of formality detection."""
+
     level: str  # "formal", "casual", "neutral"
     score: float  # 0.0 (very casual) to 1.0 (very formal)
     markers_found: List[str] = field(default_factory=list)
 
 
 class ThaiNLPEngine:
-    """
-    Thai language NLP engine with tokenization, emotion detection,
+    """Thai language NLP engine.
+
+    Provides tokenization, emotion detection,
     formality analysis, and text normalization.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.emotion_keywords = THAI_EMOTION_KEYWORDS
         self.idioms = THAI_IDIOMS
 
@@ -97,15 +142,16 @@ class ThaiNLPEngine:
     # Tokenization
     # ------------------------------------------------------------------
     def tokenize(self, text: str) -> List[str]:
-        """
-        Segment Thai text into words.
-        Uses PyThaiNLP if available, otherwise falls back to character-level split.
+        """Segment Thai text into words.
+
+        Uses PyThaiNLP if available, otherwise falls back to
+        character-level split.
         """
         if not text or not text.strip():
             return []
 
         if PYTHAINLP_AVAILABLE:
-            return _thai_tokenize(text, engine="newmm")
+            return cast(List[str], _thai_tokenize(text, engine="newmm"))
 
         # Fallback: split on whitespace and common punctuation
         return [tok for tok in re.split(r"[\s,;!?。、]+", text) if tok]
@@ -114,8 +160,9 @@ class ThaiNLPEngine:
     # Text Normalization
     # ------------------------------------------------------------------
     def normalize(self, text: str) -> str:
-        """
-        Normalize Thai text — collapse whitespace, normalize Unicode forms,
+        """Normalize Thai text.
+
+        Collapse whitespace, normalize Unicode forms,
         and reduce repeated characters (e.g. 5555555 → 555).
         """
         if not text:
@@ -136,8 +183,7 @@ class ThaiNLPEngine:
     # Emotion Detection
     # ------------------------------------------------------------------
     def detect_emotion(self, text: str) -> EmotionResult:
-        """
-        Detect the dominant emotion in Thai text using keyword matching.
+        """Detect the dominant emotion in Thai text using keyword matching.
 
         Returns:
             EmotionResult with emotion label, confidence, and matched keywords.
@@ -175,9 +221,9 @@ class ThaiNLPEngine:
     # Formality Detection
     # ------------------------------------------------------------------
     def detect_formality(self, text: str) -> FormalityResult:
-        """
-        Determine the formality level of Thai text based on particles
-        and sentence markers.
+        """Determine the formality level of Thai text.
+
+        Based on particles and sentence markers.
 
         Returns:
             FormalityResult with level, score (0-1), and matched markers.

@@ -7,10 +7,7 @@ class ArousalDetector:
     def __init__(self) -> None:
         """Initialize keyword lists for arousal detection."""
         self.keywords = {
-            "high": [
-                "เสียว", "อยาก", "wet", "hard", "touch",
-                "kiss", "จูบ", "กอด", "lick", "เลีย",
-            ],
+            "high": ["เสียว", "อยาก", "wet", "hard", "touch", "kiss", "จูบ", "กอด", "lick", "เลีย"],
             "medium": ["love", "รัก", "ชอบ", "miss", "คิดถึง", "hot", "ร้อน"],
             "low": ["hello", "hi", "สวัสดี", "talk", "คุย"],
         }
